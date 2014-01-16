@@ -31,13 +31,13 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\ksp_dev\KSP.app\Contents\Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\Volumes\HDD\G\Steam\SteamApps\common\Kerbal Space Program\KSP.app\Contents\Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\..\..\ksp_dev\KSP.app\Contents\Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\Volumes\HDD\G\Steam\SteamApps\common\Kerbal Space Program\KSP.app\Contents\Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="LibGit2Sharp">
-      <HintPath>..\..\libgit2sharp-0.15.0\LibGit2Sharp\bin\Debug\LibGit2Sharp.dll</HintPath>
+      <HintPath>..\..\depbin\LibGit2Sharp.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
