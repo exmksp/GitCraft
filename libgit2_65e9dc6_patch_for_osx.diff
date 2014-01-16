@@ -1,0 +1,12 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 9c19a5a..b684816 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -36,6 +36,7 @@ OPTION( USE_SSH				"Link with libssh to enable SSH support" ON )
+ 
+ IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+ 	SET( USE_ICONV ON )
++	ADD_DEFINITIONS(-DLIBICONV_PLUG)
+ ENDIF()
+ 
+ IF(MSVC)
