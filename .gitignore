@@ -1,3 +1,5 @@
 *.userprefs
 bin
 obj
+GitCraft.zip
+.DS_Store
