@@ -2,7 +2,7 @@ GitCraft version 0.9b1
 
 INTRODUCTION
 
-The goal of GitCraft is to make sure that craft revisions are not lost during design and testing and to allow to easily
+The goal of GitCraft is to make sure that craft revisions are not lost during design and testing and to allow designers to easily
 restore older designs even if the craft was overwritten in the editor. In other words, GitCraft gives you the ability to
 undo any change to your craft provided that the version that you want to restore was saved. Thus, GitCraft can be compared
 to an undo button that works across launches and game sessions.
