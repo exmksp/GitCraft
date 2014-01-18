@@ -7,22 +7,93 @@ using LibGit2Sharp;
 
 namespace GitNS
 {
-    public class GitPart : Part
+    public class GitModule : PartModule
     {
-        public GitModule gitMod = null;
-
-        protected override void onEditorUpdate()
+        public override void OnSave(ConfigNode node)
         {
-            base.onEditorUpdate();
-            if (this.gitMod != null && this.gitMod.needsCommit)
-                this.gitMod.commitAsNeeded(); // this is supposed to intercept the next frame after save
+            if (!HighLogic.LoadedSceneIsEditor)
+                return;
+            if (null == GitPartless.fetch)
+                return;
+            GitPartless.fetch.needsCommit = true;
+            node.ClearData();
         }
     }
 
-    public class GitModule : PartModule
+    [KSPAddon(KSPAddon.Startup.EditorAny, false)]
+    public class GitPartless : MonoBehaviour
     {
         private static Texture2D gitLogo = new Texture2D(80, 34, TextureFormat.ARGB32, false);
         public static string DirSep = System.IO.Path.DirectorySeparatorChar.ToString();
+        public static GitPartless fetch = null;
+
+        public static ShipConstruct partfulShipBeingEdited()
+        {
+            // This also prevents partless ships from displaying the git UI.
+            if (!HighLogic.LoadedSceneIsEditor || null == EditorLogic.fetch || null == EditorLogic.fetch.ship)
+                return null;
+            ShipConstruct ship = EditorLogic.fetch.ship;
+            if (null == ship.Parts || 0 == ship.Parts.Count)
+                return null;
+            else
+                return ship;
+        }
+
+        void Update()
+        {
+            ShipConstruct ship = partfulShipBeingEdited();
+            if (null == ship)
+                return;
+            List<Part> parts = ship.Parts;
+            if (needsCommit) {
+                // This is a bit paranoid, but it is necessary to make .craft files look as if there was
+                // never an injection of the GitModule. As of 0.23, things work just fine even without this,
+                // but who knows. It would suck if users get into trouble because of some empty MODULE
+                // sections. This doesn't really work during the launch, but I think that that should be fine.
+                // The "Auto Saved Ship.craft" files will have references to GitModule and there isn't much
+                // that I can do about them apart from making them empty or implementing some elaborate recovery
+                // strategy which is not worth it because who would share an auto saved ship anyway?
+
+                // Hopefully, all of this is useless, because SQUAD should be very defensive with .craft loading code 
+                // now that there are so many plugins floating around.
+                for (int ix = 0; ix < parts.Count; ++ix)
+                    if (null != parts[ix] && null != parts[ix].Modules)
+                    if (parts[ix].Modules.Contains("GitModule")) {
+                        for (int kx = 0; kx < parts[ix].Modules.Count; ++kx)
+                            if (parts[ix].Modules[kx] is GitModule) {
+                                Debug.Log("Pulling GitModule out!");
+                                //parts[ix].Modules.Remove(parts[ix].Modules[kx]);
+                                parts[ix].RemoveModule(parts[ix].Modules[kx]);
+                                break;
+                            }
+                    }
+                Debug.Log("re-saving and committing");
+                ShipConstruction.SaveShip(ship, ship.shipName); // get rid of the MODULE node, just in case
+                commitAsNeeded();
+            } 
+            // Now that we are partless, we need to attach ourselves somewhere so that we
+            // can intercept onSave(). We check the first part of the ship in each frame and attach
+            // us there. When the ship is saved(), we remove ourselves.
+            int? jx = null;
+            for (int ix = 0; ix < parts.Count; ++ix)
+                if (null != parts[ix] && null != parts[ix].Modules) {
+                    if (parts[ix].Modules.Contains("GitModule"))
+                        return; // we are already in
+                    if (null == jx)
+                        jx = ix;
+                }
+            if (null == jx)
+                return;
+            Debug.Log("nmod = " + parts[jx.Value].Modules.Count);
+            Debug.Log("Plugging GitModule in!");
+            parts[jx.Value].AddModule("GitModule");
+            Debug.Log("nmod = " + parts[jx.Value].Modules.Count);
+        }
+
+        void Awake()
+        {
+            fetch = this;
+        }
 
         private static string ShipName()
         {
@@ -83,8 +154,6 @@ namespace GitNS
         }
 
         public bool needsCommit = false;
-
-
         // Timestamp for the craft in game time, earth units.
         public static string commitTS()
         {
@@ -101,9 +170,9 @@ namespace GitNS
             hour = hour % 24;
             day += 1;
             return ("day " + day.ToString()
-                + ", " + hour.ToString("00")
-                + ":" + min.ToString("00")
-                + ":" + sec.ToString("00"));
+            + ", " + hour.ToString("00")
+            + ":" + min.ToString("00")
+            + ":" + sec.ToString("00"));
         }
 
         public int? numParts()
@@ -122,9 +191,6 @@ namespace GitNS
         public void commitAsNeeded()
         {
             needsCommit = false;
-            if (!isEnabled)
-                return;
-            print("Git part OnLoad called.");
             string shipFileName = ShipFileName();
             print("Ship type: " + ShipConstruction.ShipType);
             string fullPath = fullShipPath(shipFileName);
@@ -172,9 +238,9 @@ namespace GitNS
         const int BTNWIN_ID = 1;
         const int GITWIN_ID = 2;
 
-        public override void OnStart(StartState state)
+        void Start()
         {
-            if (state == StartState.Editor) {
+            if (HighLogic.LoadedSceneIsEditor) {
                 print("Git part started in the editor.");
                 if (!startedUI) {
                     loadIcons();
@@ -188,26 +254,28 @@ namespace GitNS
                 }
             }
         }
-
         // Something in KSP makes using opaque type necessary here.
         private object hist = null;
-        private List<Commit> getHistory() {
+
+        private List<Commit> getHistory()
+        {
             return (List<Commit>)hist;
         }
 
-        private List<Commit> reloadHistory() {
+        private List<Commit> reloadHistory()
+        {
             List<Commit> h = LoadHistory();
             print("History size: " + h.Count.ToString());
             hist = h;
             return h;
         }
-
         // Get the length of a unique prefix of a collection of strings.
         // This is intended for shortening the length of commit ids to display
         // in the UI.
-        // null is returned if there is no unique prefix or if the unique prefix 
-        // has length 0 or if the input array is empty.  
-        static int? UniquePrefixLength(string[] arr) {
+        // null is returned if there is no unique prefix or if the unique prefix
+        // has length 0 or if the input array is empty.
+        static int? UniquePrefixLength(string[] arr)
+        {
             if (arr.Length == 0)
                 return null; // degenerate case
             HashSet<string> pref = new HashSet<string>();
@@ -277,9 +345,8 @@ namespace GitNS
 
         public void drawGUI()
         {
-            if (!part.isAttached || null == part.parent)
+            if (null == partfulShipBeingEdited())
                 return;
-                
             GUIStyle winst = new GUIStyle();
             winst.border.left = winst.border.top = winst.border.right = winst.border.bottom = 0;
             winst.padding.left = winst.padding.top = winst.padding.bottom = winst.padding.right = 5;
@@ -293,37 +360,6 @@ namespace GitNS
             if (gitOn)
                 gitwinPos = GUILayout.Window(GITWIN_ID, gitwinPos, WindowGUI, "History", GUILayout.MinWidth(400));
         }
-
-        public override void OnAwake()
-        {
-            // Bind to the part so that we can catch the save. Maybe there is a more
-            // elegant way to do this -- essentially I need to defer the commit to
-            // the earliest time when the save has finished so that git can pick up
-            // the data from disk. I don't think that the render loop is the right way to do this,
-            // (what if it runs in a different thread?)
-
-            // For now, playing the ball between OnAwake(), OnSave(), and part.OnEditorUpdate() seems to work well.
-            GitPart gpart = (GitPart)part;
-            if (null != gpart)
-                gpart.gitMod = this; 
-        }
-
-        public override void OnLoad(ConfigNode node)
-        {
-            // Committing here would force a commit of a vessel file on disk
-            // as the git part is being attached to it in the editor, which
-            // means that we are committing stuff without the git part
-            // potentially. So, we only update the history here.
-        }
-
-        public override void OnSave(ConfigNode node)
-        {
-            if (!HighLogic.LoadedSceneIsEditor || !isEnabled)
-                return;
-            needsCommit = true;
-        }
-
-
         // Adopted and modified the code from
         // http://stackoverflow.com/questions/13122138/what-is-the-libgit2sharp-equivalent-of-git-log-path
         // <summary>
@@ -357,9 +393,9 @@ namespace GitNS
             list.Reverse(); // so that we get forward topological order
             return list;
         }
-
-        // Checkout the current ship from a specified commit. 
-        public void Checkout(string id) {
+        // Checkout the current ship from a specified commit.
+        public void Checkout(string id)
+        {
             Repository repo = new Repository(getSaveFolder());
             string relPath = RelShipPath(ShipFileName());
             repo.CheckoutPaths(id, new string[] { relPath });
