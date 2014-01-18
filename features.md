@@ -5,8 +5,10 @@ chronological order.
 1.0b1
  - [ ] optional commit comment
  - [ ] science system integration
+ - [ ] update README.md
 
-0.9: Nothing yet.
+0.9:
+ - [ ] update README.md
 
 0.9b2:
  - [ ] partless
@@ -14,3 +16,4 @@ chronological order.
  - [ ] start Changelog
  - [ ] upgrade path for 0.9b1 users
  - [ ] linux binary for libgit2
+ - [ ] update README.md
