@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using LibGit2Sharp;
 
-namespace GitNS
+namespace GitCraft
 {
     public class GitModule : PartModule
     {
@@ -20,12 +20,26 @@ namespace GitNS
         }
     }
 
+    public delegate void OnClick();
+
+    // This is a very minimalistic approach to optional toolbar integration. This abstraction leaks.
+    public interface IToolbarIntegration {
+        // Find out the current state of the button.
+        bool isGitButtonEnabled();
+
+        // Enable or disable the Git button.
+        void enableGitButton(bool enable);
+    }
+
     [KSPAddon(KSPAddon.Startup.EditorAny, false)]
     public class GitPartless : MonoBehaviour
     {
-        public bool shipModified = false;
+        public static bool ShowGitCraftUI = false;
+        public static IToolbarIntegration ToolbarIntegration = null;
         private static Texture2D gitLogo = new Texture2D(80, 34, TextureFormat.ARGB32, false);
         public static GitPartless fetch = null;
+
+        public bool shipModified = false;
 
         public static ShipConstruct PartfulShipBeingEdited() {
             // This also prevents partless ships from displaying the git UI.
@@ -142,7 +156,7 @@ namespace GitNS
                         if (parts[ix].Modules.Contains("GitModule")) {
                             for (int kx = 0; kx < parts[ix].Modules.Count; ++kx)
                                 if (parts[ix].Modules[kx] is GitModule) {
-                                    Debug.Log("Pulling GitModule out!");
+                                    Debug.Log("Pulling GitModule out.");
                                     //parts[ix].Modules.Remove(parts[ix].Modules[kx]);
                                     parts[ix].RemoveModule(parts[ix].Modules[kx]);
                                     break;
@@ -166,14 +180,13 @@ namespace GitNS
                 }
             if (null == jx)
                 return;
-            Debug.Log("nmod = " + parts[jx.Value].Modules.Count);
-            Debug.Log("Plugging GitModule in!");
+            Debug.Log("Plugging GitModule in.");
             parts[jx.Value].AddModule("GitModule");
-            Debug.Log("nmod = " + parts[jx.Value].Modules.Count);
         }
 
         void Awake()
         {
+            ShowGitCraftUI = false;
             fetch = this;
         }
 
@@ -239,7 +252,7 @@ namespace GitNS
 
         public void loadIcons()
         {
-            byte[] data = KSP.IO.File.ReadAllBytes<GitModule>("git_logo.png");
+            byte[] data = KSP.IO.File.ReadAllBytes<GitModule>("git_logo_wtext.png");
             print("Loaded " + data.Length + " bytes from the Git logo.");
             gitLogo.LoadImage(data);
         }
@@ -248,7 +261,6 @@ namespace GitNS
         protected Rect gitwinPos;
         protected Vector2 scrollPos;
         protected bool startedUI = false;
-        protected bool gitOn = false;
         const int BTNWIN_ID = 1;
         const int GITWIN_ID = 2;
 
@@ -276,7 +288,7 @@ namespace GitNS
             return (List<Commit>)hist;
         }
 
-        private List<Commit> reloadHistory()
+        public List<Commit> reloadHistory()
         {
             List<Commit> h = LoadHistory();
             print("History size: " + h.Count.ToString());
@@ -308,8 +320,8 @@ namespace GitNS
         {
             if (BTNWIN_ID == windowID) {
                 if (GUILayout.Button(gitLogo)) {
-                    gitOn = !gitOn;
-                    if (gitOn) {
+                    ShowGitCraftUI = !ShowGitCraftUI;
+                    if (ShowGitCraftUI) {
                         reloadHistory();
                     }
                 }
@@ -336,6 +348,7 @@ namespace GitNS
                         GUILayout.BeginHorizontal();
                         GUI.skin.button.stretchWidth = true;
                         if (GUILayout.Button(idarr[ix].Substring(0, prefL))) {
+                            ShowGitCraftUI = false;
                             Checkout(idarr[ix]);
                             EditorLogic.LoadShipFromFile(FullShipPath());
                         }
@@ -359,19 +372,31 @@ namespace GitNS
 
         public void drawGUI()
         {
-            if (null == PartfulShipBeingEdited())
+            // GUI is ok only if we are edting a partful ship.
+            bool guiOK = (null != PartfulShipBeingEdited());
+            if (null != ToolbarIntegration) {
+                // Force the button into agreement with partfulness of the ship :)
+                if (guiOK != ToolbarIntegration.isGitButtonEnabled())
+                    ToolbarIntegration.enableGitButton(guiOK);
+            }
+            // We don't do GUI apart from the disabled button in the toolbar when there is no partful ship.
+            if (!guiOK)
                 return;
-            GUIStyle winst = new GUIStyle();
-            winst.border.left = winst.border.top = winst.border.right = winst.border.bottom = 0;
-            winst.padding.left = winst.padding.top = winst.padding.bottom = winst.padding.right = 5;
-            winst.contentOffset = new Vector2(0, 0);
-            GUI.skin = HighLogic.Skin;
-            GUIStyle old_winst = GUI.skin.window;
-            GUI.skin.window = winst;
-            btnwinPos = GUILayout.Window(BTNWIN_ID, btnwinPos, WindowGUI, GUIContent.none);
-            GUI.skin.window = old_winst;
 
-            if (gitOn)
+            if (null == ToolbarIntegration) {
+                // This is the case when there is no toolbar. We draw a big button in the top right corner.
+                GUIStyle winst = new GUIStyle();
+                winst.border.left = winst.border.top = winst.border.right = winst.border.bottom = 0;
+                winst.padding.left = winst.padding.top = winst.padding.bottom = winst.padding.right = 5;
+                winst.contentOffset = new Vector2(0, 0);
+                GUI.skin = HighLogic.Skin;
+                GUIStyle old_winst = GUI.skin.window;
+                GUI.skin.window = winst;
+                btnwinPos = GUILayout.Window(BTNWIN_ID, btnwinPos, WindowGUI, GUIContent.none);
+                GUI.skin.window = old_winst;
+            }
+
+            if (ShowGitCraftUI)
                 gitwinPos = GUILayout.Window(GITWIN_ID, gitwinPos, WindowGUI, "History", GUILayout.MinWidth(400));
         }
         // Adopted and modified the code from
