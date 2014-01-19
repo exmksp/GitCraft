@@ -10,7 +10,7 @@ import zipfile
 
 if '__main__' == __name__:
     distdir = 'dist'
-    zf = zipfile.ZipFile('GitCraft.zip', 'w')
+    zf = zipfile.ZipFile('GitCraft.zip', 'w', zipfile.ZIP_DEFLATED)
     for root, dirnames, filenames in os.walk(distdir, followlinks=True):
         for filename in filenames:
             path = os.path.join(root, filename)

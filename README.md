@@ -16,7 +16,9 @@ GitCraft integrates with the standard editor UI. In other words, your revisions 
 To restore revisions you can activate the history window by clicking the git button and then click on the revision that
 you want to restore. GitCraft provides the part count and the game time when the ship was saved.
 
-Currently, GitCraft works only on Windows and Mac OS X.
+Currently, GitCraft works on Windows, Mac OS X, and Linux (Linux support is
+currently restricted to x86-64 installations of Linux and corresponding 64-bit
+executables of KSP).
 
 INSTALLATION
 
@@ -52,3 +54,4 @@ as of 01/15/2013. Please refert to http://creativecommons.org/licenses/by/3.0/ i
 The buildable source code for GitCraft and all its dependencies can be obtained from https://github.com/exmksp/GitCraft
 To build a universal binary for the libgit2 binary on Mac you may need to use the patch stored in the source directory.
 
+TODO: case sensitivity FUBAR
