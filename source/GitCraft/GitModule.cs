@@ -157,7 +157,6 @@ namespace GitCraft
                             for (int kx = 0; kx < parts[ix].Modules.Count; ++kx)
                                 if (parts[ix].Modules[kx] is GitModule) {
                                     Debug.Log("Pulling GitModule out.");
-                                    //parts[ix].Modules.Remove(parts[ix].Modules[kx]);
                                     parts[ix].RemoveModule(parts[ix].Modules[kx]);
                                     break;
                                 }
