@@ -12,10 +12,12 @@ chronological order.
 0.9:
  - [ ] update README.md
 
+0.9b3
+ - [ ] upgrade path for part removal
+
 0.9b2:
  - [x] partless
  - [x] blizzy78's toolbar integration
- - [ ] start Changelog
- - [ ] upgrade path for 0.9b1 users
+ - [x] start Changelog
  - [x] linux binary for libgit2
- - [ ] update README.md
+ - [x] update README.md
