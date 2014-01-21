@@ -14,6 +14,7 @@ chronological order.
 
 0.9b3
  - [ ] upgrade path for part removal
+ - [ ] show which revision of the craft is active in the history
 
 0.9b2:
  - [x] partless
